@@ -1,9 +1,9 @@
 import os
 import pandas
-from numpy import array
-from matplotlib import pyplot
-from datetime import datetime
 from pprint import pprint
+from numpy import array, arange
+from matplotlib import pyplot
+from scipy import stats
 
 #  Parse data
 __location__ = os.path.realpath(
@@ -11,45 +11,70 @@ __location__ = os.path.realpath(
 )
 
 filePath = os.path.join(__location__, '../nyse/prices-split-adjusted.csv')
+
 data = pandas.read_csv(filePath, index_col = 'date')
+data['date'] = data.index
+
+pricesDict = dict(data.groupby('symbol')['close'].apply(tuple))
+
+# def valuesByStep(array, step):
+# 	return array[::step]
+#
+#
+# for key in pricesDict:
+# 	priceEvery90Days = pricesDict[key][::90]
+# 	pyplot.boxplot(priceEvery90Days)
+# 	pyplot.suptitle('{} Close Price every 90 days'.format(key))
+#
+#
+# 	pyplot.xticks(arange(3, len(priceEvery90Days), 3))
+# 	pyplot.show()
 
 
-dictWithClose = dict(data.groupby('symbol')['close'].apply(tuple))
+# How I got the formula:
+# https://imgur.com/gallery/MN3z7
+def getAverageChange(symbol = '', step = 30, prices = pricesDict):
+	stepped = prices[symbol][::step]
+	length = len(stepped)
+
+	if length > 1:
+		return (stepped[-1] - stepped[0]) / (length - 1)
+
+	return stepped[-1] - stepped[0]
+
+
+# Get steps in days
+monthMultipliers = [1, 2, 4, 6, 12, 24, 48]
+steps = [number * 30 for number in monthMultipliers]
+
+
+averageChanges = {}
+for multiplier in monthMultipliers:
+	averageChanges[multiplier] = []
 
 
 
-print(dictWithClose.keys())
-appleEvery90Days = dictWithClose['AAPL'][::90]
+for key in pricesDict:
+	for index, step in enumerate(steps):
+		averageChanges[monthMultipliers[index]].append(getAverageChange(key, step))
 
-pprint(appleEvery90Days)
-print(appleEvery90Days[1])
-print(appleEvery90Days[-1])
-
-
-# List Symbols
-# print(data[:, 0])
-
-# Symbol name
-# print(data[0][0])
-
-# All data for first symbol, in this case 'A'
-# print(data[0][1].loc[:, ['close']])
-
-
-# Save plots for each company
-# for i in range(3):
-# 	data[i][1].loc[:, ['close']].plot()
-# 	pyplot.suptitle('Stock: ' + data[i][0])
-# 	pyplot.savefig('test' + str(i) + '.jpg')
-
-# print(data.shape)
-
-# print(dictWithClose.keys())
+statsDict = {}
+for multiplier in monthMultipliers:
+	# n, minMax(tuple), mean, var, skew, kurt
+	statsDict[multiplier] = tuple(stats.describe(averageChanges[multiplier]))
 
 
 
+statNames = ['min', 'max', 'mean', 'variance', 'skew', 'kurt']
 
-
-# data[0][1].loc[:, ['close']].plot()
-# pyplot.suptitle('Stock: ' + data[0][0])
-# pyplot.show()
+for name in statNames:
+	for multiplier in monthMultipliers:
+		for i in range(6):
+			# Plot min and max
+			if i == 1:
+				pyplot.bar([statsDict[multiplier][2][i]])
+	# TODO finish this
+	# pyplot.xticks(monthMultipliers)
+	# pyplot.bar(monthMultipliers, means)
+	# pyplot.subtitle('Name')
+	# pyplot.show()
