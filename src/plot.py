@@ -19,7 +19,13 @@ data = pandas.read_csv(filePath, index_col = 'date')
 data['date'] = data.index
 
 pricesDict = dict(data.groupby('symbol')['close'].apply(tuple))
+volumesDict = dict(data.groupby('symbol')['volume'].apply(tuple))
 
+steppedPriceAndVol = {}
+
+
+
+# Get average price change for company by symbol
 # How I got the formula:
 # https://imgur.com/gallery/MN3z7
 def getAverageChange(symbol = '', step = 30, prices = pricesDict):
@@ -43,8 +49,19 @@ for multiplier in monthMultipliers:
 
 
 for key in pricesDict:
+	steppedPriceAndVol[key] = {
+		'prices': {},
+		'volumes': {}
+	}
+
 	for index, step in enumerate(steps):
+		steppedPriceAndVol[key]['prices'][monthMultipliers[index]] = pricesDict[key][::step]
+		steppedPriceAndVol[key]['volumes'][monthMultipliers[index]] = volumesDict[key][::step]
+
 		averageChanges[monthMultipliers[index]].append(getAverageChange(key, step))
+
+print(steppedPriceAndVol['TSCO']['volumes'])
+
 
 statsDict = {}
 for multiplier in monthMultipliers:
@@ -57,17 +74,21 @@ for multiplier in monthMultipliers:
 statNames = ['n', 'min', 'max', 'mean', 'variance', 'skew', 'kurt']
 # stats.describe returns tuple:
 
-#
-for name in statNames:
-	if name == 'mean':
-		means = []
+print(statsDict)
+
+for i, name in enumerate(statNames):
+	if name != 'mean':
+		buff = []
 
 		for multiplier in monthMultipliers:
-			means.append(statsDict[multiplier][2])
+			buff.append(statsDict[multiplier][2])
 
-		pyplot.bar(monthMultipliers, means)
-		pyplot.title('{} segmentation price changes of S&P'.format(name))
+		pyplot.bar(monthMultipliers, buff, label = name)
+		# pyplot.title('{} segmentation price changes of S&P'.format(name))
 		pyplot.xlabel('Segment Length (Months)')
-		pyplot.ylabel(name)
-		pyplot.xticks(monthMultipliers)
+		# pyplot.ylabel(name)
+
+
+
+pyplot.xticks(monthMultipliers)
 pyplot.show()
